@@ -1,0 +1,432 @@
+Until now: 
+*All work done until point 7 got discarded.
+  Kept here only as part of the learning process of the project.
+
+
+
+
+
+
+ 1. Initial Planning Phase
+🗓️ July 16–20
+
+Defined overall project goal:
+
+Train an AI agent with reinforcement learning in Unity to drive a car realistically and generalize to unseen tracks.
+
+Selected platform:
+
+Unity 3D (using ML-Agents), with potential integration of PPO (Proximal Policy Optimization), reward shaping, and domain randomization.
+
+
+🟩 2. Unity Setup and Environment Creation
+🗓️ July 26–28
+
+Created first race track:
+
+Used Simple Roads – Free Unity asset pack.
+Assembled prefabs (curves, straights, etc.) to build a basic race track layout.
+
+Problem: How to cut a prefab or modify road elements
+→ Solution: Learned that modifying prefab instances requires unpacking or duplicating them in Unity.
+
+Created the ground:
+
+Added a plane to serve as base terrain under the track.
+
+🟩 3. Car Prefab and Physics
+🗓️ July 28–29
+
+Imported car prefab into Unity scene
+
+Used a vehicle model with separated visual and functional parts.
+
+Problem: Couldn’t add collider directly to visual tire
+→ Solution: Learned that realistic vehicles use WheelCollider components on invisible empty GameObjects positioned precisely at the wheel hubs. The visual wheels follow via code (e.g., WheelCollider.GetWorldPose()).
+
+
+4. 🔧 Vehicle Physics & WheelCollider Setup 
+🗓️ July 29-30
+
+Added 4 empty GameObjects for WheelColliders: front/rear, left/right.
+Aligned colliders with visual tires.
+Attached WheelCollider components and configured:
+Suspension, radius, and friction
+Rigidbody mass and center of mass for realistic handling
+Created CarController.cs:
+Maps input to steering (front wheels), torque (rear wheels), and visual wheel pose sync.
+Lowered center of mass via script.
+
+
+
+
+
+
+5. 🕹️ Input System Integration 
+🗓️ July 30
+
+Switched to Unity’s new Input System
+Reused existing InputSystem_Actions asset.
+Bound Move action (Vector2) to WASD + left stick.
+Updated CarController to read moveInput.x for steering and -moveInput.y for throttle.
+
+✅ Steering (A/D)
+✅ Acceleration (W)
+✅ Braking (S)
+
+🛠 Fixed:
+Reversed throttle (inverted Y)
+Car rolling backward → added brake torque when idle
+Rear wheels not grounded → fixed collider size and position
+
+
+🟩 6. Track Design Enhancement with Join the Dots
+🗓️ August 19
+
+To improve flexibility in track creation and prepare multiple training/test environments:
+Implemented the Join the Dots – 3D Shapes & Roads Unity asset
+→ https://assetstore.unity.com/packages/tools/level-design/join-the-dots-3d-shapes-roads-313840
+
+This tool allows building modular tracks by connecting nodes (dots), generating roads, curves, and shapes procedurally.
+Benefit: Reduces manual prefab placement (as with Simple Roads) and supports rapid iteration of diverse circuits, which is crucial for:
+Curriculum learning (progressively harder tracks)
+
+Domain randomization (ensuring generalization to unseen layouts)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.5. Discarded all previous cars, tracks or physics and decided to implement...
+
+
+
+
+
+
+
+
+
+7) NWH Vehicle Physics 2 (NVP2)
+🗓️ Aug 25–30
+
+Imported NVP2 v13.6, drove demo sports car to study controller/handling.
+
+Physics Features:
+Custom Wheel Model: Integrated wheel physics for realistic grip, slip angles, and combined friction.
+Suspension & Tire Simulation: Spring/damper dynamics with advanced friction curves and slip handling.
+Drivetrain System: Engine torque → clutch → gearbox → differential → wheels.
+Surface Detection: Road type tagging (e.g., asphalt, gravel, grass) affects grip, skidmarks, and effects.
+Effects: Skidmarks, tire smoke, particles, and sound feedback tied to wheel slip.
+Input & Control: Uses Unity’s Input System (via scene’s Input Provider).
+
+
+Structure:
+VehicleController.cs – central brain, ties together subsystems (engine, suspension, effects).
+Modules: Engine, Transmission, Differential, Brakes, Steering, etc.
+WheelComponent: Each wheel has physics parameters (friction, suspension travel, camber).
+GroundDetection: Reads surface tags/materials for physics and effects.
+SceneManager / InputProvider: Handles input mapping and player controls.
+
+Problem: Magenta materials (URP mismatch).
+Fix: Edit → Rendering → Materials → Convert to URP.
+
+Input broke when copying vehicle alone.
+Fix: Also copy demo _SceneManager (input provider).
+
+Skidmarks missing on custom surfaces.
+Fix: Tag road mesh as Road (per Ground Detection).
+
+
+
+
+
+
+
+
+
+
+
+8) First Complete Track + Invisible Boundaries
+🗓️ Aug 25-30
+
+Built track with Modular Lowpoly Track Roads. (1.)
+Added invisible boundary colliders around the track: MeshColliders on walls (renderer off). (2.)
+
+
+							2.
+9) Raycast Sensors — Implementation & Tuning
+🗓️ Aug 31
+
+9.1 Sensor Rig & Visibility
+Added RaycastSensorRig child to the car; drew rays with gizmos.
+
+Problem: Rays not visible in Play.
+Fix: Use OnDrawGizmos/OnDrawGizmosSelected and enable Gizmos in Scene/Game; selecting the object shows the fan.
+
+
+
+9.2 RaycastSensor.cs (finalized)
+
+Geometry: forward fan of rays; per-ray ranges (3-tier).
+Normalization: each Distances[i] is 0..1, normalised by that ray’s own max range.
+
+Key fields & current settings:
+
+Rays: 13 (odd → true center)
+FOV: 170°
+Origin offset: (0, 0, 0.3), Height: 0.25 m
+Three-tier ranges:
+Side: 50 m
+Middle: 80 m
+Middle half-width: 3 (three rays per side use middle range)
+Center (straight ahead): 160 m
+Detectable Layers: TrackBoundary
+Hit Triggers: Off
+
+
+
+
+
+
+
+
+9.3 Layer & Trigger Debug
+
+Problem: Rays didn’t collide with walls.
+Fix: Set Detectable Layers to include TrackBoundary (was “Nothing”); leave Hit Triggers = Off. Avoid Ignore Raycast layer.
+
+
+
+
+
+
+
+
+Outputs:
+Distances[] (normalised 0..1 per ray)
+HitNormals[]
+PerRayMax[] (exposed to know each ray’s absolute max if needed)
+
+
+9.4 Helper Wrappers (robust API)
+
+Index helpers: CenterIndex, LeftmostIndex, RightmostIndex.
+Accessors: GetNormalizedDistance(i), GetCenterNormalizedDistance(), GetLeftOfCenter(k), GetRightOfCenter(k).
+Angle helpers: GetRayAngleDeg(i), GetIndexForAngle(angleDeg), GetNormalizedByAngle(angleDeg).
+Sector aggregate: GetSectorMin(angleDeg, halfWidthDeg) → returns the minimum (most dangerous) normalised distance in an angular window (great for rewards/safety).
+
+Why: safer & clearer than raw indices; resilient to changes in rays/FOV; enables compact, invariant features.
+
+9.5 Debugging UX
+
+Console logger (RaycastSensorConsoleLog): prints normalised distances periodically.
+On-screen HUD (RaycastSensorHUD): quick GUI to visualise 0..1 distances live.
+
+9.6 Design Decisions (for RL)
+
+Observation format: use normalised 0–1 distances (stable learning).
+Number of rays: 13 chosen as sweet spot (accuracy vs. learning stability vs. compute).
+Ranges: three-tier (side/middle/center) for close clearance + turn anticipation + long look-ahead.
+Why not meters: meters are fine for logs; for PPO I preferred normalised inputs to avoid scale issues.
+
+10) SimpleTrack + checkpoints
+🗓️ Sept 1-3
+
+Built SimpleTrack_v1: short closed loop for initial learning stability.
+Boundaries: invisible MeshColliders on TrackBoundary layer (excluded from vehicle/kept for rays).
+Checkpoints: placed sequential OnTrigger colliders (Checkpoint_0..N) following the driving direction.
+
+Checkpoint system:
+Scripts:
+
+CheckpointTrigger.cs (on each checkpoint, isTrigger ON, optional Index).
+
+CheckpointManager.cs (on Checkpoints parent): tracks order, laps, rewards/penalties; ignores repeats/backwards; optional lap wrap check.
+
+Setup:
+Put CheckpointManager on existing Track1/Checkpoints parent; it auto-finds child triggers and auto-indexes (or manual order).
+
+Debug UX: console messages (OK -> i, WRONG -> j (expected k)).
+Use: progress tracking, reward shaping (positive reward per new checkpoint), and optional episode termination on going backwards or missing checkpoints.
+
+Episode rules (initial): end on boundary collision; optional time/step cap (Agent Max Step ~ 5000), not yet used.
+
+11) Python/ML-Agents stack finalised & handshake
+🗓️ Sept 1-3
+
+Venv created at C:\Users\micci\Desktop\AutonomousRacer\MLAgentsEnv\mlagents-env with Python 3.10.8.
+Upgraded tooling: pip, setuptools, wheel.
+NumPy 1.23.5 installed as a wheel to avoid Windows build errors.
+
+ML-Agents (Python) installed from GitHub release_23_tag (shows mlagents==1.2.0.dev0, mlagents_envs==1.2.0.dev0).
+
+Installed PyTorch CUDA 12.1 build (cu121 index; cuDNN bundled).
+Handshake: mlagents-learn connects (Communicator API 1.5.0), brain detected.
+
+
+12) CarAgent + wiring + first training config
+🗓️ Sept 1-3
+Implemented CarAgent.cs:
+Observations (15): 13 ray distances (0–1 normalized), speed (norm by 80 m/s), yaw-rate (norm by ±5 rad/s).
+
+Actions (2 continuous): steer, accel/brake (axis where + = throttle, − = brake).
+Decision flow: Decision Requester (period = 5, Take Actions Between Decisions = ON).
+Behavior Parameters on the car:
+Behavior Name: CarAgentParams (matches YAML).
+Continuous Actions: 2, Discrete: 0, Model: None, Behavior Type: Default.
+Vector Observation Space Size: 15 (fixed truncation warning).
+Training YAML (car_ppo.yaml):
+
+PPO; batch_size=1024, buffer_size=40960, learning_rate=3e-4, beta=5e-4, epsilon=0.2, lambd=0.95, num_epoch=3,
+
+hidden_units=256, num_layers=2, normalize=true, gamma=0.99, time_horizon=128, summary_freq=5000, max_steps=2e6.
+
+✅ Diary Update — ML Build Start
+🗓️ November 6, 2025
+
+13) ML Build Initialization — Neural Network Training Phase Begins
+
+With the full Unity–ML Agents pipeline now stable and all telemetry, sensors, and reward systems integrated, the project is officially ready to begin the neural network training phase.
+
+Environment Readiness
+
+Unity environment fully configured with:
+
+NWH Vehicle Physics 2 handling realistic car dynamics.
+
+RaycastSensor (13 rays, 3-tier range) providing normalized 0–1 obstacle distances.
+
+WheelTelemetry reading real-time friction, slips, lock/spin events, and “on track” status.
+
+CheckpointManager tracking lap progress and rewardable milestones.
+
+ML-Agents (Python + Unity) handshake confirmed.
+
+All observation and action spaces verified, stable dimensions (15+).
+
+Reward System (current iteration)
+
+Positive: forward speed, smooth progress, staying on track, correct checkpoints.
+
+Negative: slip, wheel lock/spin, proximity to walls, going off track, collisions.
+
+Parameters tuned for first PPO run; rewards normalized and balanced to avoid bias collapse.
+
+
+14) Training Script Added
+  🗓️ November 6, 2025
+
+
+Comprehensive Reward System and Training Documentation Added
+
+Following the initialization of the ML build, the CarAgent now includes a complete reward system and finalized training setup documentation.
+
+🧠 Implementation Summary
+
+  Added a reward computation system directly in CarAgent, balancing progress, speed, traction, and obstacle avoidance.
+
+  Verified all observation and action spaces for the upcoming PPO training phase.
+
+  Tuned termination conditions for stability (crashes, off-track, max steps).
+
+  Reward structure promotes smooth, forward, and track-bound driving while discouraging slip, lock, and collisions.
+
+📄 Documentation Added — README.md
+
+  A full ML-Agents Training Setup Guide was written to standardize the workflow for future iterations and reproducibility. It covers:
+
+  Neural Network architecture (inputs, outputs, layers, normalization)
+
+  Reward system (detailed logic, values, and rationale)
+
+  Training configuration (hyperparameters, termination, checkpoints)
+
+  How-to guide for starting and monitoring training sessions
+
+  Tuning tips for performance and stability optimization
+
+  Model export procedure (.onnx, .pt, and checkpoint usage)
+
+
+Training Automation Script — train_model.bat
+
+  A dedicated Windows batch script was created to streamline ML-Agents training sessions. The script automates the launch process for PPO training, ensuring consistent configuration and simplified execution.
+
+  ⚙️ File: train_model.bat
+  @echo off
+  REM Training script for Autonomous Racer ML-Agents
+  REM Make sure Unity is running with the environment before starting training
+
+  cd MLAgentsEnv\mlagents-env\Scripts
+
+  echo Starting ML-Agents training...
+  echo Config: Config\Car_ppo.yaml
+  echo Results will be saved to: results\car_v0
+
+  call mlagents-learn Config\Car_ppo.yaml --run-id=car_v0 --force
+
+  pause
+
+🧩 Purpose & Usage
+
+Automation: Launches the PPO trainer without requiring manual command input.
+
+Reproducibility: Always runs with the same configuration (Car_ppo.yaml) and stores results under a unique run ID (car_v0).
+
+Workflow: Ensures that Unity is already running the environment, then triggers the Python training session inside the correct virtual environment path (MLAgentsEnv\mlagents-env\Scripts).
+
+Convenience: Displays run configuration and pauses at the end for review of logs or results.
+
+This marks the completion of the ML training pipeline setup — Unity environment, reward system, PPO configuration, and now a one-click training launcher ready for execution.
+
+
+
+
+15) Curriculum Learning Strategy Refinement (Time Horizon)
+🗓️ November 10, 2025
+
+Based on the need to balance stable initial learning (low variance) with complex long-term planning (low bias), a **staged approach for the PPO Time Horizon** was adopted:
+
+* **Initial Phase (Simple Tracks):** The Time Horizon will be set to a **smaller value (e.g., 128 or 256 steps)**. This forces the agent to focus on **immediate rewards** and **short-term consequences**, facilitating the rapid, stable learning of basic skills like forward motion and crash avoidance.
+* **Advanced Phase (Complex Tracks):** As the agent graduates to more complex, unseen circuits (via curriculum learning), the Time Horizon will be progressively **increased (e.g., 512, then 1024+ steps)**.
+* **Goal:** A larger time horizon encourages the agent to consider **long-term goals** (e.g., the final lap bonus) and optimize sophisticated behaviors like **racing lines** and **corner setup**, crucial for high-performance driving.
+
+This strategy ensures early stability while allowing for the development of advanced intelligence later in the training pipeline.
+
+Advanced PPO Strategy: Staging Entropy (beta)
+
+To further enhance the curriculum learning process, a staging strategy was also defined for the PPO Entropy Coefficient (beta = 5.0 \times 10^{-4}):
+
+* **Initial Exploration Phase (Higher $beta):** The Entropy Coefficient will be set to a slightly **higher value** (e.g., $1.0 \times 10^{-3}) during the initial learning stages and on simple tracks. This increases the randomness of the agent's actions, heavily promoting **exploration** to quickly discover viable driving paths and avoid early local optima.
+* **Refinement Phase (Decreasing beta):** As the agent masters basic skills and progresses to complex tracks, the beta value will be **gradually decreased** (or scheduled to decay).
+* **Goal:** Lowering beta shifts the agent's priority from exploration to **exploitation**, focusing its learning on refining its discovered policy to be highly **deterministic** and consistent for maximizing lap times.
+
+
+16)Complete ML-Agents Infrastructure Implementation
+
+This session was dedicated to finalizing the complete ML-Agents infrastructure required for the main training phase.
+
+* **Reward System Analysis:** The **complete mathematical formulation** for the 10-component reward system was finalized and documented in `REWARD_FORMULA_ANALYSIS.md`. The analysis confirmed that **Speed Rewards** dominate the positive signal and the **Off-Track Penalty** is the strongest negative signal (100x the positive on-track reward).
+
+* **Action Application Implemented:** The core issue of agent inputs not reaching the car was addressed by implementing the `ApplyVehicleInputs()` method in `CarAgent.cs`. This method uses a **three-tier fallback system** (NWH Controller $\rightarrow$ Direct WheelController $\rightarrow$ Rigidbody Force) to ensure the actions (steer, throttle, brake) are applied to the vehicle.
+
+* **Training Workflow Automation:** A comprehensive set of **PowerShell and Batch scripts** were created to automate all training scenarios: `train_model` (new run, `--force`), `train_model_resume` (`--resume`), and `train_model_parallel` (`--num-envs`).
+
+* **Performance Optimization (CUDA/Parallel):** CUDA/GPU support was integrated into the training scripts for acceleration, and the parallel training infrastructure was enabled to allow running multiple environments simultaneously for faster data collection.
+
+* **PPO Hyperparameter Finalization:** The PPO configuration (`Car_ppo.yaml`) was updated based on the curriculum strategy:
+    * **Time Horizon** set to a smaller **128 steps** (from 512) for initial stability on simple tracks.
+    * **Beta (Entropy)** set to a higher **1.0e-3** (from 5.0e-4) to encourage robust initial exploration.
+
+* **Current Status & Next Step:** The infrastructure is fully documented and configured. The final immediate blocker is a known issue where the agent's inputs are still not properly affecting the vehicle (likely due to an incorrect reflection property name in `ApplyVehicleInputs`). **Debugging the vehicle input application is the highest priority.**

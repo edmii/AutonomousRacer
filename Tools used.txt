@@ -1,0 +1,29 @@
+-Unity hub
+-Python
+	-Numpy (array/matrix computing, required by ML-Agents)
+
+mlagents
+	-https://github.com/Unity-Technologies/ml-agents/releases/tag/release_23_tag
+
+-Virtual Env (Python venv): -NOT USED YET-
+ -Create:  python -m venv mlagents-env
+ -Activate (Windows): mlagents-env\Scripts\activate
+ -Deactivate: deactivate
+ -Check it works: mlagents-learn --help
+
+-When you press "Play" in Unity, and start training via:
+ -mlagents-learn config/my_config.yaml --run-id=my_run
+	
+
+-Track modular prefabs:  
+ https://assetstore.unity.com/packages/3d/environments/roadways/modular-lowpoly-track-roads-free-205188
+
+-Car and Physics:
+	https://assetstore.unity.com/packages/tools/physics/nwh-vehicle-physics-2-166252#description
+
+-ML-Agents Unity Package:
+ -https://github.com/Unity-Technologies/ml-agents.git?path=com.unity.ml-agents
+
+
+
+-TO DO: setting up the training YAML

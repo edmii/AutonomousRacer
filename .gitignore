@@ -1,0 +1,7 @@
+# ML-Agents folders
+mlagents/
+MLAgentsEnv/
+
+# Video files
+*.mp4
+
