@@ -18,7 +18,7 @@ ML-Agents supports two types of training sessions:
 
 **PowerShell:**
 ```powershell
-.\train_model.ps1
+.\train_model.bat
 ```
 
 **Command Prompt:**

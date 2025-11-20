@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
@@ -74,6 +75,9 @@ public class CarAgent : Agent
         // Store initial spawn position and rotation for episode resets
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
+        
+        // Disable Auto Set Input on NWH Vehicle Controller to allow agent control
+        // DisableAutoSetInput();
         
         if (enableDebugLogging)
         {
@@ -177,6 +181,15 @@ public class CarAgent : Agent
         CheckTerminationConditions();
     }
 
+    /// <summary>
+    /// Applies vehicle inputs (steering, throttle, brake) to the vehicle controller.
+    /// Uses NWH Vehicle Physics 2 input API as documented: https://nwhvehiclephysics.com/doku.php/Setup/Input
+    /// Documentation: vehicleController.input.Horizontal, vehicleController.input.Throttle, vehicleController.input.Brakes
+    /// Or: vehicleController.input.states.horizontal, vehicleController.input.states.throttle, vehicleController.input.states.brakes
+    /// </summary>
+    /// <param name="steer">Steering input (-1 to 1)</param>
+    /// <param name="throttle">Throttle input (0 to 1)</param>
+    /// <param name="brake">Brake input (0 to 1)</param>
     void ApplyVehicleInputs(float steer, float throttle, float brake)
     {
         bool inputApplied = false;
@@ -184,45 +197,106 @@ public class CarAgent : Agent
         // Method 1: Try NWH Vehicle Physics 2 controller (if assigned)
         if (nwhVehicleController != null)
         {
-            // Try common NWH VP2 property names
             var controllerType = nwhVehicleController.GetType();
-            var steeringProp = controllerType.GetProperty("Steering") ?? controllerType.GetProperty("steering");
-            var throttleProp = controllerType.GetProperty("Throttle") ?? controllerType.GetProperty("throttle");
-
-            // Try multiple brake property name variations
-            var brakeProp = controllerType.GetProperty("Brakes")
-                         ?? controllerType.GetProperty("brakes")
-                         ?? controllerType.GetProperty("Brake")
-                         ?? controllerType.GetProperty("brake");
-
-            bool steerSet = steeringProp != null && steeringProp.CanWrite;
-            bool throttleSet = throttleProp != null && throttleProp.CanWrite;
-            bool brakeSet = brakeProp != null && brakeProp.CanWrite;
-
-            if (steerSet) steeringProp.SetValue(nwhVehicleController, steer);
-            if (throttleSet) throttleProp.SetValue(nwhVehicleController, throttle);
-            if (brakeSet)
+            var bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            
+            // Get the 'input' property from the vehicle controller
+            object inputObject = null;
+            var inputProp = controllerType.GetProperty("input", bindingFlags) 
+                         ?? controllerType.GetProperty("Input", bindingFlags);
+            
+            if (inputProp != null)
             {
-                brakeProp.SetValue(nwhVehicleController, brake);
+                inputObject = inputProp.GetValue(nwhVehicleController);
             }
-            // else if (enableDebugLogging && brake > 0.01f)
-            // {
-            //     // Log available properties for debugging
-            //     var allProps = controllerType.GetProperties();
-            //     Debug.LogWarning($"[CarAgent] Brake property not found! Available properties: {string.Join(", ", System.Array.ConvertAll(allProps, p => p.Name))}");
-            // }
-
-            if (steerSet || throttleSet || brakeSet)
+            // Fallback to field if property missing
+            else
             {
-                lastInputMethod = $"NWH Vehicle Controller (Steer:{steerSet}, Throttle:{throttleSet}, Brake:{brakeSet})";
-                inputApplied = true;
-
-                if (enableDebugLogging && (logFrequency == 0 || actionCount % logFrequency == 0))
+                var inputField = controllerType.GetField("input", bindingFlags)
+                              ?? controllerType.GetField("Input", bindingFlags);
+                if (inputField != null)
                 {
-                    Debug.Log($"[CarAgent] Applied via NWH Vehicle Controller - Steer: {steer:F3}, Throttle: {throttle:F3}, Brake: {brake:F3}");
+                    inputObject = inputField.GetValue(nwhVehicleController);
+                }
+            }
+            
+            if (inputObject != null)
+            {
+                var inputType = inputObject.GetType();
+
+                // --- STEP 1: Disable Auto Set Input (Crucial!) ---
+                // vehicleController.input.autoSetInput = false;
+                var autoSetInputProp = inputType.GetProperty("autoSetInput", bindingFlags) 
+                                    ?? inputType.GetProperty("AutoSetInput", bindingFlags);
+                
+                if (autoSetInputProp != null && autoSetInputProp.CanWrite)
+                {
+                    autoSetInputProp.SetValue(inputObject, false);
+                }
+                else
+                {
+                    // Try field
+                    var autoSetInputField = inputType.GetField("autoSetInput", bindingFlags) 
+                                         ?? inputType.GetField("AutoSetInput", bindingFlags);
+                    if (autoSetInputField != null)
+                    {
+                        autoSetInputField.SetValue(inputObject, false);
+                    }
                 }
 
-                return; // If controller found, use it
+                // var throttleProp = inputType.GetProperty("Throttle", bindingFlags) 
+                //                 ?? inputType.GetProperty("throttle", bindingFlags);
+                                
+                // var brakeProp = inputType.GetProperty("Brakes", bindingFlags)
+                //              ?? inputType.GetProperty("brakes", bindingFlags);
+                
+                // --- STEP 2: Apply Inputs via Properties (Horizontal, Vertical) ---
+                // Documentation says: vehicleController.input.Horizontal = val; 
+                // And: vehicleController.input.Vertical = 0.5f (throttle), -0.5f (brake)
+                
+                // Horizontal (Steering)
+                var horizontalProp = inputType.GetProperty("Horizontal", bindingFlags) 
+                                  ?? inputType.GetProperty("horizontal", bindingFlags)
+                                  ?? inputType.GetProperty("Steering", bindingFlags); // Fallback
+                
+                if (horizontalProp != null && horizontalProp.CanWrite)
+                {
+                    horizontalProp.SetValue(inputObject, steer);
+                    // horizontalProp.SetValue(nwhVehicleController, steer); // This is the correct way to set the steering
+                    inputApplied = true;
+                }
+
+                // Vertical (Throttle/Brake Combined)
+                // Positive = Throttle, Negative = Brake
+                var verticalProp = inputType.GetProperty("Vertical", bindingFlags)
+                                ?? inputType.GetProperty("vertical", bindingFlags);
+
+                if (verticalProp != null && verticalProp.CanWrite)
+                {
+                    // Combine throttle (0..1) and brake (0..1) into one Vertical axis (-1..1)
+                    float verticalInput = 0f;
+                    if (throttle > 0.01f) verticalInput = throttle;
+                    else if (brake > 0.01f) verticalInput = -brake;
+
+                    verticalProp.SetValue(inputObject, verticalInput);
+                    // inputApplied = true; // Vertical counts as application
+                }
+                else
+                {
+                    // Fallback: separate properties if Vertical doesn't exist
+                    var throttleProp = inputType.GetProperty("Throttle", bindingFlags);
+                    var brakeProp = inputType.GetProperty("Brakes", bindingFlags) 
+                                 ?? inputType.GetProperty("Brake", bindingFlags);
+
+                    if (throttleProp != null && throttleProp.CanWrite) throttleProp.SetValue(inputObject, throttle);
+                    if (brakeProp != null && brakeProp.CanWrite) brakeProp.SetValue(inputObject, brake);
+                }
+
+                if (inputApplied)
+                {
+                    lastInputMethod = "NWH Vehicle Controller (via Properties)";
+                    return; 
+                }
             }
         } 
 
@@ -230,7 +304,11 @@ public class CarAgent : Agent
         // Warn if no input method worked
         if (!inputApplied && enableDebugLogging && (logFrequency == 0 || actionCount % logFrequency == 0))
         {
-            Debug.LogWarning($"[CarAgent] WARNING: No input method applied! Check vehicle controller setup. Steer: {steer:F3}, Throttle: {throttle:F3}, Brake: {brake:F3}");
+            Debug.LogWarning($"[CarAgent] WARNING: No input method applied! Check vehicle controller setup. " +
+                           $"nwhVehicleController: {(nwhVehicleController != null ? "ASSIGNED" : "NULL")}, " +
+                           $"wheelTelemetry: {(wheelTelemetry != null ? "ASSIGNED" : "NULL")}, " +
+                           $"rb: {(rb != null ? "ASSIGNED" : "NULL")}. " +
+                           $"Steer: {steer:F3}, Throttle: {throttle:F3}, Brake: {brake:F3}");
         }
     }
 
@@ -332,16 +410,38 @@ public class CarAgent : Agent
     // Detect crashes via collision events
     void OnCollisionEnter(Collision collision)
     {
+        // Filter out collisions with the Track or Road
+        // If wheelTelemetry is available, use its track mask
+        if (wheelTelemetry != null)
+        {
+            if ((wheelTelemetry.trackSurfaceMask.value & (1 << collision.gameObject.layer)) != 0)
+            {
+                return; // Hit the track surface, ignore
+            }
+        }
+        
+        // Also ignore if tag is "Road" or layer is "TrackSurface" as a backup
+        if (collision.gameObject.CompareTag("Road") || collision.gameObject.layer == LayerMask.NameToLayer("TrackSurface"))
+        {
+            return;
+        }
+
+        // Debug log for ANY other collision to help diagnosis
+        Debug.Log($"[CarAgent] Collision detected with: {collision.gameObject.name} (Tag: {collision.gameObject.tag}, Layer: {LayerMask.LayerToName(collision.gameObject.layer)})");
+
         // Check if collision is significant enough to be considered a crash
-        // You can add additional checks here (e.g., collision force, specific objects)
         if (endOnCrash)
         {
             hasCrashed = true;
             
             if (enableDebugLogging)
             {
-                Debug.Log($"[CarAgent] Crash detected! Collided with: {collision.gameObject.name}");
+                Debug.Log($"[CarAgent] CRASH CONFIRMED! Requesting episode reset.");
             }
+
+            // Force episode termination immediately
+            AddReward(-1f);
+            EndEpisode();
         }
     }
 
@@ -366,18 +466,53 @@ public class CarAgent : Agent
     {
         var ca = actionsOut.ContinuousActions;
         
-        // FIXED: Removed Input.GetAxis() calls to prevent InvalidOperationException
-        // New Input System is active - old UnityEngine.Input.GetAxis() throws exception
-        // This method is only called when Behavior Type = "Heuristic Only" (for manual testing)
-        // During training (Behavior Type = "Default"), this method is NEVER called
-        
-        // Set actions to zero (no manual control with new Input System)
-        // For training, this doesn't matter - set Behavior Type to "Default"
-        ca[0] = 0f; // Steering
-        ca[1] = 0f; // Throttle/Brake
-        
-        // Note: If you need heuristic control, implement new Input System support
-        // But for ML-Agents training, Behavior Type should be "Default", not "Heuristic Only"
+        // Initialize inputs
+        float steer = 0f;
+        float throttleBrake = 0f;
+
+        // 1. Keyboard Input
+        if (Keyboard.current != null)
+        {
+            // Steering
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) 
+                steer = -1f;
+            else if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) 
+                steer = 1f;
+
+            // Throttle / Brake
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) 
+                throttleBrake = 1f;
+            else if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) 
+                throttleBrake = -1f;
+        }
+
+        // 2. Gamepad Input (overrides keyboard if present)
+        if (Gamepad.current != null)
+        {
+            // Steering (Left Stick X)
+            float stickX = Gamepad.current.leftStick.x.ReadValue();
+            if (Mathf.Abs(stickX) > 0.1f) // deadzone
+            {
+                steer = stickX;
+            }
+
+            // Throttle (Right Trigger) & Brake (Left Trigger)
+            float rightTrigger = Gamepad.current.rightTrigger.ReadValue();
+            float leftTrigger = Gamepad.current.leftTrigger.ReadValue();
+            
+            if (rightTrigger > 0.05f)
+            {
+                throttleBrake = rightTrigger;
+            }
+            else if (leftTrigger > 0.05f)
+            {
+                throttleBrake = -leftTrigger;
+            }
+        }
+
+        // Assign to actions
+        ca[0] = steer;
+        ca[1] = throttleBrake;
     }
 
     public override void OnEpisodeBegin()
