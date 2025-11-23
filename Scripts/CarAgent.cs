@@ -11,7 +11,10 @@ public class CarAgent : Agent
     public RaycastSensor ray;            // your RaycastSensor component
     public Rigidbody rb;                 // car rigidbody
 
-    // If you drive NWH Vehicle Physics 2, drag its VehicleController here
+    // NWH Vehicle Physics 2 Input Provider (preferred method - attach AIInputProvider component to car)
+    public AIInputProvider aiInputProvider;
+
+    // Legacy: If using reflection method instead, drag VehicleController here
     public MonoBehaviour nwhVehicleController; 
 
     public NwhWheelTelemetry wheelTelemetry; // drag in Inspector
@@ -76,12 +79,28 @@ public class CarAgent : Agent
         spawnPosition = transform.position;
         spawnRotation = transform.rotation;
         
-        // Disable Auto Set Input on NWH Vehicle Controller to allow agent control
-        // DisableAutoSetInput();
+        // Try to find AIInputProvider if not assigned
+        if (aiInputProvider == null)
+        {
+            aiInputProvider = GetComponent<AIInputProvider>();
+            if (aiInputProvider == null)
+            {
+                aiInputProvider = GetComponentInParent<AIInputProvider>();
+            }
+        }
         
         if (enableDebugLogging)
         {
-            Debug.Log($"[CarAgent] Initialize - Agent initialized. Rigidbody: {(rb != null ? "OK" : "MISSING")}, WheelTelemetry: {(wheelTelemetry != null ? "OK" : "MISSING")}, RaySensor: {(ray != null ? "OK" : "MISSING")}");
+            Debug.Log($"[CarAgent] Initialize - Agent initialized. Rigidbody: {(rb != null ? "OK" : "MISSING")}, " +
+                     $"WheelTelemetry: {(wheelTelemetry != null ? "OK" : "MISSING")}, " +
+                     $"RaySensor: {(ray != null ? "OK" : "MISSING")}, " +
+                     $"AIInputProvider: {(aiInputProvider != null ? "OK (using provider)" : "MISSING (will use reflection fallback)")}");
+            
+            if (aiInputProvider == null && nwhVehicleController == null)
+            {
+                Debug.LogWarning("[CarAgent] WARNING: No AIInputProvider or nwhVehicleController assigned! " +
+                               "Please attach AIInputProvider component to the car GameObject for best results.");
+            }
         }
     }
 
@@ -178,14 +197,13 @@ public class CarAgent : Agent
         CalculateRewards();
 
         // Check for episode termination conditions
-        CheckTerminationConditions();
+        // CheckTerminationConditions();
     }
 
     /// <summary>
     /// Applies vehicle inputs (steering, throttle, brake) to the vehicle controller.
-    /// Uses NWH Vehicle Physics 2 input API as documented: https://nwhvehiclephysics.com/doku.php/Setup/Input
-    /// Documentation: vehicleController.input.Horizontal, vehicleController.input.Throttle, vehicleController.input.Brakes
-    /// Or: vehicleController.input.states.horizontal, vehicleController.input.states.throttle, vehicleController.input.states.brakes
+    /// Preferred method: Uses AIInputProvider (proper NWH integration, prevents input conflicts).
+    /// Fallback method: Uses Reflection to directly set VehicleController inputs (legacy, may cause jitter).
     /// </summary>
     /// <param name="steer">Steering input (-1 to 1)</param>
     /// <param name="throttle">Throttle input (0 to 1)</param>
@@ -194,7 +212,18 @@ public class CarAgent : Agent
     {
         bool inputApplied = false;
 
-        // Method 1: Try NWH Vehicle Physics 2 controller (if assigned)
+        // Method 1: Use AIInputProvider (PREFERRED - prevents input conflicts and jitter)
+        if (aiInputProvider != null)
+        {
+            aiInputProvider.steeringInput = steer;
+            aiInputProvider.throttleInput = throttle;
+            aiInputProvider.brakeInput = brake;
+            inputApplied = true;
+            lastInputMethod = "AIInputProvider (Recommended)";
+            return; // Exit early - this is the best method
+        }
+
+        // Method 2: Fallback - Use Reflection to directly set VehicleController inputs (LEGACY)
         if (nwhVehicleController != null)
         {
             var controllerType = nwhVehicleController.GetType();
@@ -305,6 +334,7 @@ public class CarAgent : Agent
         if (!inputApplied && enableDebugLogging && (logFrequency == 0 || actionCount % logFrequency == 0))
         {
             Debug.LogWarning($"[CarAgent] WARNING: No input method applied! Check vehicle controller setup. " +
+                           $"AIInputProvider: {(aiInputProvider != null ? "ASSIGNED" : "NULL (RECOMMENDED)")}, " +
                            $"nwhVehicleController: {(nwhVehicleController != null ? "ASSIGNED" : "NULL")}, " +
                            $"wheelTelemetry: {(wheelTelemetry != null ? "ASSIGNED" : "NULL")}, " +
                            $"rb: {(rb != null ? "ASSIGNED" : "NULL")}. " +
@@ -320,6 +350,9 @@ public class CarAgent : Agent
         Vector3 forwardVelocity = Vector3.Project(rb.linearVelocity, transform.forward);
         float forwardSpeed = forwardVelocity.magnitude * Mathf.Sign(Vector3.Dot(forwardVelocity, transform.forward));
 
+        AddReward(-0.001f); // Constant time penalty
+        // AddReward(forwardSpeed * 0.001f); // Much smaller speed helper, just to break tie-breaks
+
         // 1. Speed reward (encourage forward movement)
         if (forwardSpeed > minSpeedForProgress)
         {
@@ -331,6 +364,11 @@ public class CarAgent : Agent
         {
             AddReward(forwardSpeed * forwardProgressMultiplier);
         }
+        else if (forwardSpeed < 0)
+        {
+            // Penalty for going backward (proportional to backward speed)
+            AddReward(forwardSpeed * forwardProgressMultiplier); // This will be negative since forwardSpeed < 0
+        } 
 
         // 3. On-track reward
         if (wheelTelemetry.WheelsOnTrack)
@@ -338,73 +376,70 @@ public class CarAgent : Agent
             AddReward(onTrackReward);
         } else {
             AddReward(-1f); // Penalty for going off track
+            
         }
+    
 
-        // 4. Traction rewards/penalties
-        float totalSlip = Mathf.Abs(wheelTelemetry.maxAbsLatSlip) + Mathf.Abs(wheelTelemetry.maxAbsLongSlip);
+        // // 4. Traction rewards/penalties
+        // float totalSlip = Mathf.Abs(wheelTelemetry.maxAbsLatSlip) + Mathf.Abs(wheelTelemetry.maxAbsLongSlip);
         
-        // Penalty for excessive slipping
-        float slipPenalty = totalSlip * slipPenaltyMultiplier;
-        AddReward(-slipPenalty);
+        // // Penalty for excessive slipping
+        // float slipPenalty = totalSlip * slipPenaltyMultiplier;
+        // AddReward(-slipPenalty);
         
-        // Positive reward for maintaining good traction (only when moving)
-        if (forwardSpeed > minSpeedForProgress && totalSlip < goodTractionSlipThreshold)
-        {
-            // Reward increases as slip decreases (better traction = more reward)
-            float tractionQuality = 1f - (totalSlip / goodTractionSlipThreshold);
-            AddReward(tractionQuality * tractionRewardMultiplier);
-        }
+        // // Positive reward for maintaining good traction (only when moving)
+        // if (forwardSpeed > minSpeedForProgress && totalSlip < goodTractionSlipThreshold)
+        // {
+        //     // Reward increases as slip decreases (better traction = more reward)
+        //     float tractionQuality = 1f - (totalSlip / goodTractionSlipThreshold);
+        //     AddReward(tractionQuality * tractionRewardMultiplier);
+        // }
 
-        // 5. Wheel event penalties (lock/spin)
-        if (wheelTelemetry.anyWheelLocked)
-        {
-            AddReward(-wheelEventPenalty);
-        }
-        if (wheelTelemetry.anyWheelSpinning)
-        {
-            AddReward(-wheelEventPenalty * 0.5f); // spinning is less bad than locking
-        }
+        // // 5. Wheel event penalties (lock/spin)
+        // if (wheelTelemetry.anyWheelLocked)
+        // {
+        //     AddReward(-wheelEventPenalty);
+        // }
+        // if (wheelTelemetry.anyWheelSpinning)
+        // {
+        //     AddReward(-wheelEventPenalty * 0.5f); // spinning is less bad than locking
+        // }
 
-        // 6. Obstacle avoidance (penalize getting too close to obstacles)
-        if (ray && ray.Distances != null)
-        {
-            float minDistance = 0.5f;
-            foreach (var dist in ray.Distances)
-            {
-                minDistance = Mathf.Min(minDistance, dist);
-            }
+    //     // 6. Obstacle avoidance (penalize getting too close to obstacles)
+    //     if (ray && ray.Distances != null)
+    //     {
+    //         float minDistance = 0.5f;
+    //         foreach (var dist in ray.Distances)
+    //         {
+    //             minDistance = Mathf.Min(minDistance, dist);
+    //         }
 
-            if (minDistance < obstacleThreshold)
-            {
-                float penalty = (obstacleThreshold - minDistance) / obstacleThreshold * obstaclePenaltyMultiplier;
-                AddReward(-penalty);
-            }
-        }
+    //         if (minDistance < obstacleThreshold)
+    //         {
+    //             float penalty = (obstacleThreshold - minDistance) / obstacleThreshold * obstaclePenaltyMultiplier;
+    //             AddReward(-penalty);
+    //         }
+    //     }
 
-        // 7. Grounded reward/penalty
-        if (wheelTelemetry.isGrounded)
-        {
-            AddReward(groundedReward);
-        }
-        else
-        {
-            AddReward(-notGroundedPenalty);
-        }
+    //     // 7. Grounded reward/penalty
+    //     if (wheelTelemetry.isGrounded)
+    //     {
+    //         AddReward(groundedReward);
+    //     }
+    //     else
+    //     {
+    //         AddReward(-notGroundedPenalty);
+    //     }
 
-        lastPosition = transform.position;
-    }
+    //     lastPosition = transform.position;
+    // }
 
-    void CheckTerminationConditions()
-    {
-        if (!rb || !wheelTelemetry) return;
-
-        // Check for crash (collision-based detection)
-        if (endOnCrash && hasCrashed)
-        {
-            AddReward(-1f); // Large penalty for crashing
-            EndEpisode();
-            return;
-        }
+    // void CheckTerminationConditions()
+    // {
+    //     if (!rb || !wheelTelemetry) return;
+        
+    //     // NOTE: Crash logic is handled directly in OnCollisionEnter to ensure immediate termination
+    //     // But we should still keep our "Off Track" and "Stuck" logic here if you choose to re-enable them.
     }
 
     // Detect crashes via collision events
@@ -450,15 +485,18 @@ public class CarAgent : Agent
     {
         if (correct)
         {
-            AddReward(0.2f); // Reward for hitting correct checkpoint
-            if (lap > 0)
+            AddReward(0.5f); // Reward for hitting correct checkpoint
+
+            // Only give lap completion bonus when a NEW lap is started (checkpointIndex 0)
+            // and it's not the very first start (lap > 0)
+            if (checkpointIndex == 0 && lap > 0)
             {
                 AddReward(1f); // Bonus for completing a lap
             }
         }
         else
         {
-            AddReward(-0.3f); // Penalty for wrong checkpoint
+            AddReward(-1f); // Penalty for wrong checkpoint
         }
     }
 
@@ -544,7 +582,13 @@ public class CarAgent : Agent
         actionCount = 0;
         hasCrashed = false; // Reset crash flag for new episode
         
-        // Reset vehicle controller inputs to zero (if using Vehicle Controller)
+        // Reset AI Input Provider inputs to zero (preferred method)
+        if (aiInputProvider != null)
+        {
+            aiInputProvider.ResetInputs();
+        }
+        
+        // Reset vehicle controller inputs to zero (if using Reflection fallback)
         if (nwhVehicleController != null)
         {
             var controllerType = nwhVehicleController.GetType();
@@ -606,6 +650,21 @@ public class CarAgent : Agent
         // If DecisionRequester is not present, uncomment the line below:
         // RequestDecision();
         
+        // Check for blindness (Diagnostic)
+        if (enableDebugLogging && Time.frameCount % 60 == 0) // Every 1s
+        {
+             if (ray && ray.Distances != null)
+             {
+                 bool allMax = true;
+                 foreach(var d in ray.Distances) { if (d < 1.0f) allMax = false; }
+                 
+                 if (allMax)
+                 {
+                      Debug.LogWarning($"[CarAgent] BLINDNESS DETECTED! All {ray.Distances.Length} rays returned max distance (1.0). The agent cannot see the walls. Check RaycastSensor 'Detectable Layers' mask!");
+                 }
+             }
+        }
+
         // Diagnostic: Log if agent is running but not receiving actions
         if (enableDebugLogging && Time.frameCount % 300 == 0) // Every 5 seconds at 60fps
         {
