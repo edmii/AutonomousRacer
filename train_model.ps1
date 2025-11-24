@@ -22,7 +22,7 @@ Write-Host "For parallel training (faster), use train_model_parallel.ps1" -Foreg
 Write-Host "or add --num-envs=4 --env-path=path\to\build.exe" -ForegroundColor Yellow
 Write-Host ""
 
-if (Test-Path "results\car_v0") {
+if (Test-Path "results\car_v1") {
     Write-Host "Found existing training data at results\car_v0." -ForegroundColor Yellow
     Write-Host "Deleting old data to ensure a fresh training session..." -ForegroundColor Yellow
     Remove-Item -Path "results\car_v0" -Recurse -Force
@@ -30,7 +30,7 @@ if (Test-Path "results\car_v0") {
     Write-Host ""
 }
 
-& mlagents-learn Config\Car_ppo.yaml --run-id=car_v0 --force
+& mlagents-learn Config\Car_ppo.yaml --run-id=car_v1 --force
 
 Write-Host ""
 Write-Host "Training completed. Press any key to exit..." -ForegroundColor Green

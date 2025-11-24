@@ -430,3 +430,105 @@ This session was dedicated to finalizing the complete ML-Agents infrastructure r
     * **Beta (Entropy)** set to a higher **1.0e-3** (from 5.0e-4) to encourage robust initial exploration.
 
 * **Current Status & Next Step:** The infrastructure is fully documented and configured. The final immediate blocker is a known issue where the agent's inputs are still not properly affecting the vehicle (likely due to an incorrect reflection property name in `ApplyVehicleInputs`). **Debugging the vehicle input application is the highest priority.**
+
+
+
+
+
+
+
+
+log model v12 >
+
+[INFO] CarAgentParams. Step: 10000. Time Elapsed: 226.703 s. Mean Reward: -9514.621. Std of Reward: 5376.847. Training.
+[INFO] CarAgentParams. Step: 20000. Time Elapsed: 464.494 s. Mean Reward: -5830.832. Std of Reward: 3786.859. Training.
+[INFO] CarAgentParams. Step: 30000. Time Elapsed: 686.795 s. Mean Reward: -4046.203. Std of Reward: 1767.023. Training.
+[INFO] CarAgentParams. Step: 40000. Time Elapsed: 912.902 s. Mean Reward: -2129.676. Std of Reward: 1217.340. Training.
+[INFO] CarAgentParams. Step: 50000. Time Elapsed: 1141.354 s. Mean Reward: -1234.736. Std of Reward: 733.410. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-49955.onnx
+[INFO] CarAgentParams. Step: 60000. Time Elapsed: 1374.811 s. Mean Reward: -648.901. Std of Reward: 375.845. Training.
+[INFO] CarAgentParams. Step: 70000. Time Elapsed: 1609.249 s. Mean Reward: -424.383. Std of Reward: 246.759. Training.
+[INFO] CarAgentParams. Step: 80000. Time Elapsed: 1851.451 s. Mean Reward: -271.702. Std of Reward: 147.123. Training.
+[INFO] CarAgentParams. Step: 90000. Time Elapsed: 2094.562 s. Mean Reward: -201.925. Std of Reward: 90.281. Training.
+[INFO] CarAgentParams. Step: 100000. Time Elapsed: 2343.762 s. Mean Reward: -154.722. Std of Reward: 64.255. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-99984.onnx
+[INFO] CarAgentParams. Step: 110000. Time Elapsed: 2595.009 s. Mean Reward: -128.438. Std of Reward: 41.446. Training.
+[INFO] CarAgentParams. Step: 120000. Time Elapsed: 2850.673 s. Mean Reward: -114.946. Std of Reward: 35.029. Training.
+[INFO] CarAgentParams. Step: 130000. Time Elapsed: 3108.701 s. Mean Reward: -101.069. Std of Reward: 24.629. Training.
+[INFO] CarAgentParams. Step: 140000. Time Elapsed: 3366.716 s. Mean Reward: -92.968. Std of Reward: 20.004. Training.
+[INFO] CarAgentParams. Step: 150000. Time Elapsed: 3626.786 s. Mean Reward: -87.121. Std of Reward: 17.326. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-149995.onnx
+[INFO] CarAgentParams. Step: 160000. Time Elapsed: 3887.803 s. Mean Reward: -81.422. Std of Reward: 14.282. Training.
+[INFO] CarAgentParams. Step: 170000. Time Elapsed: 4147.963 s. Mean Reward: -78.621. Std of Reward: 13.087. Training.
+[INFO] CarAgentParams. Step: 180000. Time Elapsed: 4408.579 s. Mean Reward: -75.314. Std of Reward: 11.171. Training.
+[INFO] CarAgentParams. Step: 190000. Time Elapsed: 4672.075 s. Mean Reward: -72.883. Std of Reward: 9.821. Training.
+[INFO] CarAgentParams. Step: 200000. Time Elapsed: 4935.913 s. Mean Reward: -70.496. Std of Reward: 9.573. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-199998.onnx
+[INFO] CarAgentParams. Step: 210000. Time Elapsed: 5198.514 s. Mean Reward: -68.785. Std of Reward: 8.564. Training.
+[INFO] CarAgentParams. Step: 220000. Time Elapsed: 5462.292 s. Mean Reward: -67.498. Std of Reward: 8.242. Training.
+[INFO] CarAgentParams. Step: 230000. Time Elapsed: 5726.412 s. Mean Reward: -66.238. Std of Reward: 7.207. Training.
+[INFO] CarAgentParams. Step: 240000. Time Elapsed: 5990.010 s. Mean Reward: -66.265. Std of Reward: 8.021. Training.
+[INFO] CarAgentParams. Step: 250000. Time Elapsed: 6253.442 s. Mean Reward: -65.563. Std of Reward: 7.419. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-249992.onnx
+[INFO] CarAgentParams. Step: 260000. Time Elapsed: 6517.313 s. Mean Reward: -65.582. Std of Reward: 7.405. Training.
+[INFO] CarAgentParams. Step: 270000. Time Elapsed: 6780.306 s. Mean Reward: -65.133. Std of Reward: 7.192. Training.
+[INFO] CarAgentParams. Step: 280000. Time Elapsed: 7043.066 s. Mean Reward: -64.161. Std of Reward: 5.870. Training.
+[INFO] CarAgentParams. Step: 290000. Time Elapsed: 7308.004 s. Mean Reward: -64.316. Std of Reward: 6.567. Training.
+[INFO] CarAgentParams. Step: 300000. Time Elapsed: 7571.827 s. Mean Reward: -64.446. Std of Reward: 7.052. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-299996.onnx
+[INFO] CarAgentParams. Step: 310000. Time Elapsed: 7835.452 s. Mean Reward: -64.546. Std of Reward: 7.378. Training.
+[INFO] CarAgentParams. Step: 320000. Time Elapsed: 8099.965 s. Mean Reward: -66.063. Std of Reward: 8.080. Training.
+[INFO] CarAgentParams. Step: 330000. Time Elapsed: 8365.304 s. Mean Reward: -65.702. Std of Reward: 8.171. Training.
+[INFO] CarAgentParams. Step: 340000. Time Elapsed: 8629.666 s. Mean Reward: -66.513. Std of Reward: 8.576. Training.
+[INFO] CarAgentParams. Step: 350000. Time Elapsed: 8890.777 s. Mean Reward: -65.838. Std of Reward: 8.530. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-349994.onnx
+[INFO] CarAgentParams. Step: 360000. Time Elapsed: 9154.752 s. Mean Reward: -65.734. Std of Reward: 8.354. Training.
+[INFO] CarAgentParams. Step: 370000. Time Elapsed: 9418.612 s. Mean Reward: -66.386. Std of Reward: 8.586. Training.
+[INFO] CarAgentParams. Step: 380000. Time Elapsed: 9681.997 s. Mean Reward: -65.830. Std of Reward: 8.515. Training.
+[INFO] CarAgentParams. Step: 390000. Time Elapsed: 9946.518 s. Mean Reward: -66.858. Std of Reward: 8.958. Training.
+[INFO] CarAgentParams. Step: 400000. Time Elapsed: 10209.970 s. Mean Reward: -66.251. Std of Reward: 8.598. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-399994.onnx
+[INFO] CarAgentParams. Step: 410000. Time Elapsed: 10472.522 s. Mean Reward: -66.501. Std of Reward: 8.805. Training.
+[INFO] CarAgentParams. Step: 420000. Time Elapsed: 10731.709 s. Mean Reward: -65.008. Std of Reward: 7.785. Training.
+[INFO] CarAgentParams. Step: 430000. Time Elapsed: 10996.377 s. Mean Reward: -64.770. Std of Reward: 7.384. Training.
+[INFO] CarAgentParams. Step: 440000. Time Elapsed: 11260.844 s. Mean Reward: -64.519. Std of Reward: 7.543. Training.
+[INFO] CarAgentParams. Step: 450000. Time Elapsed: 11524.901 s. Mean Reward: -63.283. Std of Reward: 6.267. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-449990.onnx
+[INFO] CarAgentParams. Step: 460000. Time Elapsed: 11789.555 s. Mean Reward: -63.736. Std of Reward: 6.643. Training.
+[INFO] CarAgentParams. Step: 470000. Time Elapsed: 12054.673 s. Mean Reward: -62.716. Std of Reward: 5.997. Training.
+[INFO] CarAgentParams. Step: 480000. Time Elapsed: 12318.828 s. Mean Reward: -62.087. Std of Reward: 5.108. Training.
+[INFO] CarAgentParams. Step: 490000. Time Elapsed: 12587.544 s. Mean Reward: -61.811. Std of Reward: 4.740. Training.
+[INFO] CarAgentParams. Step: 500000. Time Elapsed: 12852.772 s. Mean Reward: -62.144. Std of Reward: 4.805. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-499996.onnx
+[INFO] CarAgentParams. Step: 510000. Time Elapsed: 13117.731 s. Mean Reward: -62.326. Std of Reward: 5.512. Training.
+[INFO] CarAgentParams. Step: 520000. Time Elapsed: 13381.443 s. Mean Reward: -62.013. Std of Reward: 4.667. Training.
+[INFO] CarAgentParams. Step: 530000. Time Elapsed: 13647.544 s. Mean Reward: -61.545. Std of Reward: 4.197. Training.
+[INFO] CarAgentParams. Step: 540000. Time Elapsed: 13912.864 s. Mean Reward: -60.600. Std of Reward: 3.826. Training.
+[INFO] CarAgentParams. Step: 550000. Time Elapsed: 14177.034 s. Mean Reward: -60.911. Std of Reward: 3.981. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-549997.onnx
+[INFO] CarAgentParams. Step: 560000. Time Elapsed: 14442.108 s. Mean Reward: -60.794. Std of Reward: 3.864. Training.
+[INFO] CarAgentParams. Step: 570000. Time Elapsed: 14706.896 s. Mean Reward: -60.775. Std of Reward: 3.660. Training.
+[INFO] CarAgentParams. Step: 580000. Time Elapsed: 14971.359 s. Mean Reward: -60.897. Std of Reward: 3.922. Training.
+[INFO] CarAgentParams. Step: 590000. Time Elapsed: 15236.671 s. Mean Reward: -60.111. Std of Reward: 3.309. Training.
+[INFO] CarAgentParams. Step: 600000. Time Elapsed: 15498.669 s. Mean Reward: -58.602. Std of Reward: 1.021. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-599993.onnx
+[INFO] CarAgentParams. Step: 610000. Time Elapsed: 15761.722 s. Mean Reward: -58.351. Std of Reward: 0.888. Training.
+[INFO] CarAgentParams. Step: 620000. Time Elapsed: 16023.949 s. Mean Reward: -58.229. Std of Reward: 0.836. Training.
+[INFO] CarAgentParams. Step: 630000. Time Elapsed: 16287.117 s. Mean Reward: -58.167. Std of Reward: 0.890. Training.
+[INFO] CarAgentParams. Step: 640000. Time Elapsed: 16550.056 s. Mean Reward: -58.079. Std of Reward: 0.713. Training.
+[INFO] CarAgentParams. Step: 650000. Time Elapsed: 16812.930 s. Mean Reward: -59.247. Std of Reward: 3.099. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-649999.onnx
+[INFO] CarAgentParams. Step: 660000. Time Elapsed: 17079.793 s. Mean Reward: -62.147. Std of Reward: 4.381. Training.
+[INFO] CarAgentParams. Step: 670000. Time Elapsed: 17344.016 s. Mean Reward: -61.814. Std of Reward: 4.705. Training.
+[INFO] CarAgentParams. Step: 680000. Time Elapsed: 17608.591 s. Mean Reward: -61.049. Std of Reward: 3.890. Training.
+[INFO] CarAgentParams. Step: 690000. Time Elapsed: 17874.622 s. Mean Reward: -62.635. Std of Reward: 3.259. Training.
+[INFO] CarAgentParams. Step: 700000. Time Elapsed: 18140.087 s. Mean Reward: -61.717. Std of Reward: 3.538. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-699993.onnx
+[INFO] CarAgentParams. Step: 710000. Time Elapsed: 18403.669 s. Mean Reward: -61.686. Std of Reward: 3.300. Training.
+[INFO] CarAgentParams. Step: 720000. Time Elapsed: 18666.821 s. Mean Reward: -62.305. Std of Reward: 1.821. Training.
+[INFO] CarAgentParams. Step: 730000. Time Elapsed: 18931.641 s. Mean Reward: -62.184. Std of Reward: 2.604. Training.
+[INFO] CarAgentParams. Step: 740000. Time Elapsed: 19196.984 s. Mean Reward: -62.082. Std of Reward: 1.509. Training.
+[INFO] CarAgentParams. Step: 750000. Time Elapsed: 19460.700 s. Mean Reward: -61.980. Std of Reward: 1.856. Training.
+[INFO] Exported results\car_v1\CarAgentParams\CarAgentParams-749999.onnx
+[INFO] CarAgentParams. Step: 760000. Time Elapsed: 19724.829 s. Mean Reward: -61.957. Std of Reward: 1.261. Training.
+[INFO] CarAgentParams. Step: 770000. Time Elapsed: 19989.032 s. Mean Reward: -62.051. Std of Reward: 2.028. Training.
