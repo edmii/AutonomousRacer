@@ -12,8 +12,8 @@ if errorlevel 1 (
 echo.
 
 REM Check if previous training exists
-if not exist "results\car_v0" (
-    echo ERROR: No previous training found at results\car_v0
+if not exist "results\car_v2-2" (
+    echo ERROR: No previous training found at results\car_v2-2
     echo Use train_model.bat to start a new training session.
     pause
     exit /b 1
@@ -21,14 +21,14 @@ if not exist "results\car_v0" (
 
 echo Resuming ML-Agents training...
 echo Config: Config\Car_ppo.yaml
-echo Run ID: car_v0
+echo Run ID: car_v2-2
 echo.
 echo NOTE: Training will continue from the last checkpoint.
 echo NOTE: ML-Agents will automatically use CUDA if available, otherwise CPU.
 echo.
 
 REM Resume training (--resume flag loads the checkpoint automatically)
-call mlagents-learn Config\Car_ppo.yaml --run-id=car_v0 --resume
+call mlagents-learn Config\Car_ppo.yaml --run-id=car_v2-2 --resume
 
 pause
 

@@ -32,7 +32,7 @@ public class AIInputProvider : MonoBehaviour
 
     [Header("Input Smoothing")]
     [Tooltip("Enable input smoothing to reduce jittery AI behavior")]
-    public bool enableSmoothing = true;
+    public bool enableSmoothing = false;
     
     [Tooltip("Smoothing speed (higher = faster response, lower = smoother). Recommended: 5-15")]
     public float smoothingSpeed = 10f;

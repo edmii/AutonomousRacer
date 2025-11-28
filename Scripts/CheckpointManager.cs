@@ -5,7 +5,7 @@ public class CheckpointManager : MonoBehaviour
 {
     [Header("Assign the parent that contains all CheckpointTrigger children")]
     public Transform checkpointsParent;      // drag your "Checkpoints" object here
-    public float minForwardSpeed = 0.5f;     // m/s: ignore tiny bumps
+    // public float minForwardSpeed = 0.5f;     // m/s: ignore tiny bumps
     [Range(0f,1f)] public float minForwardDot = 0.1f; // require crossing roughly in forward dir
 
     [HideInInspector] public List<CheckpointTrigger> Checkpoints = new();
@@ -14,7 +14,7 @@ public class CheckpointManager : MonoBehaviour
     { 
         public int last = -1; 
         public int lap = 0; 
-        public float lastHitTime = -1f; // Time when last checkpoint was hit
+        public float lastHitTime = 0f; // Time when last checkpoint was hit
         public int lastHitIndex = -1;    // Index of last checkpoint hit
     }
     readonly Dictionary<CarAgent, AgentState> states = new();
@@ -40,9 +40,11 @@ public class CheckpointManager : MonoBehaviour
     /// Call this from a thin trigger forwarder on each checkpoint
     public void ReportHit(CarAgent agent, int index, Vector3 velocity, Vector3 cpForward)
     {
+        // Debug.Log($"[CP] MANAGER ({this.GetInstanceID()}) processing hit {index} for {agent.name}");
         if (agent == null || Checkpoints.Count == 0) return;
 
         if (!states.TryGetValue(agent, out var s)) states[agent] = s = new AgentState();
+        // Debug.Log($"[CP] Agent State: last={s.last}, lap={s.lap}, lastHitIndex={s.lastHitIndex}, lastHitTime={s.lastHitTime}");
 
         // Anti-spam: Prevent same checkpoint from triggering multiple times in quick succession
         float currentTime = Time.time;
@@ -52,7 +54,7 @@ public class CheckpointManager : MonoBehaviour
             return;
         }
 
-        if (velocity.magnitude < minForwardSpeed) return;
+        // if (velocity.magnitude < minForwardSpeed) return;
         if (Vector3.Dot(cpForward, velocity.normalized) < minForwardDot) return;
 
         int count = Checkpoints.Count;
@@ -102,16 +104,26 @@ public class CheckpointManager : MonoBehaviour
             // Optional: agent.EndEpisode();
         }
     }
-    
+
     /// Reset checkpoint state for an agent (call from OnEpisodeBegin)
-    public void ResetAgentState(CarAgent agent)
-    {
+     public void ResetAgentState(CarAgent agent)
+    {   
+        Debug.Log($"[CP] MANAGER ({this.GetInstanceID()}) resetting state for {agent.name}");
+        if (!states.TryGetValue(agent, out var s))
+        {
+            s = new AgentState();
+            states[agent] = s;
+            // Debug.Log($"[CP] New state created for agent {agent.name}");
+        }
+        
         if (agent != null && states.ContainsKey(agent))
         {
-            states[agent].last = -1;
-            states[agent].lap = 0;
-            states[agent].lastHitTime = -1f;
-            states[agent].lastHitIndex = -1;
+            s.last = -1;
+            s.lap = 0;
+            s.lastHitTime = 0f;
+            s.lastHitIndex = -1;
+            // Debug.Log($"[CP] State reset for agent {agent.name}");
         }
+        
     }
 }

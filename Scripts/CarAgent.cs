@@ -24,7 +24,7 @@ public class CarAgent : Agent
 
     [Header("Reward Settings")]
     [Tooltip("Reward per m/s of forward speed")]
-    public float speedRewardMultiplier = 0.01f;
+    public float speedRewardMultiplier = 0.02f;
     [Tooltip("Reward for staying on track per step")]
     public float onTrackReward = 0.01f;
     [Tooltip("Penalty for excessive lateral slip")]
@@ -42,7 +42,7 @@ public class CarAgent : Agent
     [Tooltip("Reward for forward progress (velocity in forward direction)")]
     public float forwardProgressMultiplier = 0.02f;
     [Tooltip("Reward for being grounded (all wheels on ground)")]
-    public float groundedReward = 0.01f;
+    public float groundedReward = 0.015f;
     [Tooltip("Penalty for not being grounded (car in air)")]
     public float notGroundedPenalty = 0.1f;
 
@@ -213,15 +213,15 @@ public class CarAgent : Agent
         bool inputApplied = false;
 
         // Method 1: Use AIInputProvider (PREFERRED - prevents input conflicts and jitter)
-        if (aiInputProvider != null)
-        {
-            aiInputProvider.steeringInput = steer;
-            aiInputProvider.throttleInput = throttle;
-            aiInputProvider.brakeInput = brake;
-            inputApplied = true;
-            lastInputMethod = "AIInputProvider (Recommended)";
-            return; // Exit early - this is the best method
-        }
+        // if (aiInputProvider != null)
+        // {
+        //     aiInputProvider.steeringInput = steer;
+        //     aiInputProvider.throttleInput = throttle;
+        //     aiInputProvider.brakeInput = brake;
+        //     inputApplied = true;
+        //     lastInputMethod = "AIInputProvider (Recommended)";
+        //     return; // Exit early - this is the best method
+        // }
 
         // Method 2: Fallback - Use Reflection to directly set VehicleController inputs (LEGACY)
         if (nwhVehicleController != null)
@@ -375,7 +375,7 @@ public class CarAgent : Agent
         {
             AddReward(onTrackReward);
         } else {
-            AddReward(-1f); // Penalty for going off track
+            AddReward(-0.35f); // Penalty for going off track
             
         }
     
@@ -476,6 +476,7 @@ public class CarAgent : Agent
 
             // Force episode termination immediately
             AddReward(-1f);
+            checkpointManager.ResetAgentState(this);
             EndEpisode();
         }
     }
@@ -489,9 +490,10 @@ public class CarAgent : Agent
 
             // Only give lap completion bonus when a NEW lap is started (checkpointIndex 0)
             // and it's not the very first start (lap > 0)
-            if (checkpointIndex == 0 && lap > 0)
+            if (checkpointIndex == 0 && lap == 2)
             {
                 AddReward(1f); // Bonus for completing a lap
+                EndEpisode(); // End episode on lap completion
             }
         }
         else
@@ -636,7 +638,11 @@ public class CarAgent : Agent
         {
             checkpointManager.ResetAgentState(this);
         }
-        
+        else 
+        {
+            // Fail loudly if missing
+            Debug.LogError("CheckpointManager not assigned in CarAgent!");
+        }
         if (enableDebugLogging)
         {
             Debug.Log($"[CarAgent] OnEpisodeBegin - Episode started. Reset to spawn position: {spawnPosition}, Rotation: {spawnRotation.eulerAngles}. Velocity reset. Action count reset to 0. Checkpoint state reset.");
