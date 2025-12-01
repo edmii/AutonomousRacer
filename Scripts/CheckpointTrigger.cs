@@ -19,6 +19,8 @@ public class CheckpointTrigger : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         var rb = other.attachedRigidbody;
+        // Debug.Log($"[CheckpointTrigger] OnTriggerEnter: {other.name} (Layer: {other.gameObject.layer})");
+        
         var agent = rb ? rb.GetComponent<CarAgent>() : null;
         if (!agent || !Manager) return;
 

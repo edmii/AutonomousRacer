@@ -60,7 +60,8 @@ public class CarAgent : Agent
     [Tooltip("Log every N frames (0 = every frame, 50 = every 50 frames)")]
     public int logFrequency = 50;
 
-    private CheckpointManager checkpointManager;
+    // [Header("Environment")] // Optional, makes it look nice
+    public CheckpointManager checkpointManager;
     private Vector3 lastPosition;
     private float episodeStartTime;
     private int actionCount = 0;
@@ -69,10 +70,27 @@ public class CarAgent : Agent
     private Vector3 spawnPosition; // Initial spawn position
     private Quaternion spawnRotation; // Initial spawn rotation
 
+    private float lastCrashTime = -100f; // Added to prevent double-reset
+
     public override void Initialize()
     {
         if (!rb) rb = GetComponent<Rigidbody>();
-        checkpointManager = FindObjectOfType<CheckpointManager>();
+        
+        // Only find if not assigned in Inspector
+        if (checkpointManager == null)
+        {
+            checkpointManager = FindObjectOfType<CheckpointManager>();
+        }
+
+        if (checkpointManager != null)
+        {
+             Debug.Log($"[CarAgent] CheckpointManager assigned: {checkpointManager.name} (ID: {checkpointManager.GetInstanceID()})");
+        }
+        else
+        {
+             Debug.LogError("[CarAgent] CheckpointManager NOT found!");
+        }
+
         lastPosition = transform.position;
         
         // Store initial spawn position and rotation for episode resets
@@ -462,21 +480,20 @@ public class CarAgent : Agent
         }
 
         // Debug log for ANY other collision to help diagnosis
-        Debug.Log($"[CarAgent] Collision detected with: {collision.gameObject.name} (Tag: {collision.gameObject.tag}, Layer: {LayerMask.LayerToName(collision.gameObject.layer)})");
+        // Debug.Log($"[CarAgent] Collision detected with: {collision.gameObject.name} (Tag: {collision.gameObject.tag}, Layer: {LayerMask.LayerToName(collision.gameObject.layer)})");
 
         // Check if collision is significant enough to be considered a crash
-        if (endOnCrash)
+        if (endOnCrash && !hasCrashed && (Time.time - lastCrashTime > 1.0f))
         {
             hasCrashed = true;
+            lastCrashTime = Time.time;
             
-            if (enableDebugLogging)
-            {
-                Debug.Log($"[CarAgent] CRASH CONFIRMED! Requesting episode reset.");
-            }
+            Debug.Log($"[CarAgent] CRASH CONFIRMED! Requesting episode reset.");
+            
 
             // Force episode termination immediately
             AddReward(-1f);
-            checkpointManager.ResetAgentState(this);
+            // checkpointManager.ResetAgentState(this);
             EndEpisode();
         }
     }
