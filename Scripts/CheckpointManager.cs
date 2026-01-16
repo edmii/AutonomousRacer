@@ -97,7 +97,7 @@ public class CheckpointManager : MonoBehaviour
                 expected = (s.last + 1) % count; // Next checkpoint in sequence
             }
             
-            Debug.Log($"[CP] Logic Check: Index={index}, Last={s.last}, Expected={expected}, Lap={s.lap}, Count={count}");
+            // Debug.Log($"[CP] Logic Check: Index={index}, Last={s.last}, Expected={expected}, Lap={s.lap}, Count={count}");
 
             if (index == expected)
             {
@@ -107,7 +107,7 @@ public class CheckpointManager : MonoBehaviour
                 s.lastHitTime = currentTime;
                 if (wrapped) s.lap++;
 
-                Debug.Log($"[CP] {agent.name}: OK -> {index}, lap={s.lap}");
+                // Debug.Log($"[CP] {agent.name}: OK -> {index}, lap={s.lap}");
                 agent.OnCheckpointHit(true, index, s.lap);
             }
             else if (index == s.last)
@@ -117,17 +117,17 @@ public class CheckpointManager : MonoBehaviour
                 {
                     // This shouldn't happen, but handle it just in case
                     s.last = index;
-                    Debug.Log($"[CP] {agent.name}: First checkpoint {index} (initialized)");
+                    // Debug.Log($"[CP] {agent.name}: First checkpoint {index} (initialized)");
                     agent.OnCheckpointHit(true, index, s.lap);
                 }
                 else
                 {
-                    Debug.Log($"[CP] {agent.name}: repeat {index} (ignored)");
+                    // Debug.Log($"[CP] {agent.name}: repeat {index} (ignored)");
                 }
             }
             else
             {
-                Debug.LogWarning($"[CP] {agent.name}: WRONG -> {index} (expected {expected}, last was {s.last})");
+                // Debug.LogWarning($"[CP] {agent.name}: WRONG -> {index} (expected {expected}, last was {s.last})");
                 agent.OnCheckpointHit(false, index, s.lap);
                 // Optional: agent.EndEpisode();
             }
