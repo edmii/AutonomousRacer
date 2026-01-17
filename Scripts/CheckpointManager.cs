@@ -102,34 +102,33 @@ public class CheckpointManager : MonoBehaviour
             if (index == expected)
             {
                 bool wrapped = (s.last == count - 1 && index == 0);
+
+                //Check if we are just starting the race (No CP -> CP 0)
+                bool firstStart = (s.last == -1 && index == 0);
+
                 s.last = index;
                 s.lastHitIndex = index;
                 s.lastHitTime = currentTime;
-                if (wrapped) s.lap++;
+
+                // Increment lap on EITHER a full loop OR the first start
+                if (wrapped || firstStart) 
+                {
+                    s.lap++;
+                }
 
                 // Debug.Log($"[CP] {agent.name}: OK -> {index}, lap={s.lap}");
                 agent.OnCheckpointHit(true, index, s.lap);
             }
-            else if (index == s.last)
-            {
-                // repeat, ignore (but allow first checkpoint if last is -1)
-                if (s.last == -1 && index == 0)
-                {
-                    // This shouldn't happen, but handle it just in case
-                    s.last = index;
-                    // Debug.Log($"[CP] {agent.name}: First checkpoint {index} (initialized)");
-                    agent.OnCheckpointHit(true, index, s.lap);
-                }
-                else
-                {
-                    // Debug.Log($"[CP] {agent.name}: repeat {index} (ignored)");
-                }
-            }
             else
             {
-                // Debug.LogWarning($"[CP] {agent.name}: WRONG -> {index} (expected {expected}, last was {s.last})");
+                // 1. Update the Anti-Spam memory so we don't punish 50 times per second
+                s.lastHitIndex = index;       
+                s.lastHitTime = currentTime;
+
+                // 2. Log exactly WHY it failed (crucial for debugging Part 2)
+                Debug.LogWarning($"[CP] WRONG Hit! Agent hit Index {index}, but Manager expected {expected}. (Last correct was {s.last})");
+
                 agent.OnCheckpointHit(false, index, s.lap);
-                // Optional: agent.EndEpisode();
             }
         }
         catch (System.Exception e)

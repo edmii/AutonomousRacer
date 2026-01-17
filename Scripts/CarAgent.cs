@@ -72,6 +72,9 @@ public class CarAgent : Agent
 
     private float lastCrashTime = -100f; // Added to prevent double-reset
 
+    private float startTime;
+    private float timeElapsed;
+
     public override void Initialize()
     {
         if (!rb) rb = GetComponent<Rigidbody>();
@@ -505,17 +508,27 @@ public class CarAgent : Agent
         {
             AddReward(0.5f); // Reward for hitting correct checkpoint
 
+            Debug.Log($"Lap: {lap} -- Checkpoint: {checkpointIndex}");
+            if (checkpointIndex == 0 && lap == 1)
+            {
+                startTime=Time.time;
+            }
             // Only give lap completion bonus when a NEW lap is started (checkpointIndex 0)
             // and it's not the very first start (lap > 0)
-            if (checkpointIndex == 0 && lap == 2)
+            if (checkpointIndex == 0 && lap > 1)
             {
-                AddReward(1f); // Bonus for completing a lap
+                AddReward(2f); // Bonus for completing a lap
+                timeElapsed=Time.time-startTime;
+                Debug.Log($"[CarAgent] Lap completed in {timeElapsed:F2} seconds");
+                Unity.MLAgents.Academy.Instance.StatsRecorder.Add("Racing/LapTime", timeElapsed);
                 EndEpisode(); // End episode on lap completion
             }
         }
         else
         {
+            Debug.Log("Wrong Checkpoint");
             AddReward(-1f); // Penalty for wrong checkpoint
+            EndEpisode();
         }
     }
 
