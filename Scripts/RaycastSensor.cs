@@ -5,9 +5,13 @@ public class RaycastSensor : MonoBehaviour
 {
     [Header("Geometry")]
     public int rays = 11;                 // odd is enforced in OnValidate()
-    [Range(10f, 270f)] public float fov = 170f;
+    [Range(10f, 270f)] public float fov = 160f;
     public float height = 0.25f;
     public Vector3 localOffset = new Vector3(0f, 0f, 0.3f);
+
+    [Header("Ray Distribution")]
+    [Tooltip("1.0 = Linear. >1.0 = High density in center. Try 1.5 or 2.0.")]
+    [Range(0.1f, 4f)] public float rayBias = 1.4f;
 
     [Header("Per-ray ranges (3-tier)")]
     [Tooltip("Meters for the outer rays.")]
@@ -126,8 +130,23 @@ public class RaycastSensor : MonoBehaviour
 
         for (int i = 0; i < rays; i++)
         {
-            float t = (rays == 1) ? 0.5f : (float)i / (rays - 1);
-            float angleDeg = -fov * 0.5f + t * fov;
+            // 1. Calculate linear t (0 to 1)
+            float t = (rays == 1) ? 0.5f : (float)i / (rays - 1); 
+
+            // 2. Shift to -1 to 1 range (0 becomes center)
+            float x = (t * 2f) - 1f; 
+
+            // 3. Apply "Foveal Bias" (Non-linear distribution)
+            // bias = 1.0 (linear/current), bias > 1.0 (more center rays), bias < 1.0 (more side rays)
+            // A bias of 1.5 or 2.0 is usually a sweet spot for racing.
+            float x_warped = Mathf.Sign(x) * Mathf.Pow(Mathf.Abs(x), rayBias);
+
+            // 4. Shift back to 0 to 1 range
+            float t_new = (x_warped + 1f) * 0.5f;
+
+            // 5. Calculate angle using the new warped t
+            float angleDeg = -fov * 0.5f + t_new * fov;
+
             Vector3 dir = Quaternion.Euler(0f, angleDeg, 0f) * transform.forward;
 
             float perRayMax = RangeForIndex(i);
@@ -166,8 +185,21 @@ public class RaycastSensor : MonoBehaviour
 
         for (int i = 0; i < rays; i++)
         {
+            // --- MUST MATCH SampleRays() MATH ---
             float t = (rays == 1) ? 0.5f : (float)i / (rays - 1);
-            float angleDeg = -fov * 0.5f + t * fov;
+            
+            // 1. Remap to -1..1
+            float x = (t * 2f) - 1f;
+
+            // 2. Apply Bias (The part likely missing in your Gizmos)
+            float x_warped = Mathf.Sign(x) * Mathf.Pow(Mathf.Abs(x), rayBias);
+
+            // 3. Remap back to 0..1
+            float t_new = (x_warped + 1f) * 0.5f;
+            // ------------------------------------
+
+            float angleDeg = -fov * 0.5f + t_new * fov;
+
             Vector3 dir = Quaternion.Euler(0f, angleDeg, 0f) * transform.forward;
 
             float perRayMax = RangeForIndex(i);

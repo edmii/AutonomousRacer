@@ -42,9 +42,13 @@ public class CarAgent : Agent
     [Tooltip("Reward for forward progress (velocity in forward direction)")]
     public float forwardProgressMultiplier = 0.02f;
     [Tooltip("Reward for being grounded (all wheels on ground)")]
-    public float groundedReward = 0.015f;
-    [Tooltip("Penalty for not being grounded (car in air)")]
-    public float notGroundedPenalty = 0.1f;
+    
+    [Header("Smoothness Controls")]
+    [Tooltip("Penalty multiplier for jerky inputs.")]
+    public float actionSmoothingPenalty = 0.5f; // Increased slightly to be effective
+
+    [Tooltip("Speed (m/s) below which throttle smoothing is active.")]
+    public float lowSpeedThreshold = 5.0f; // ~18 km/h. Below this, we force smooth throttle.
 
     [Header("Episode Termination")]
     [Tooltip("End episode if car goes off track")]
@@ -69,6 +73,9 @@ public class CarAgent : Agent
     private bool hasCrashed = false; // Track if car has crashed via collision
     private Vector3 spawnPosition; // Initial spawn position
     private Quaternion spawnRotation; // Initial spawn rotation
+
+    private float lastThrottle;
+    private float lastBrake;
 
     private float lastCrashTime = -100f; // Added to prevent double-reset
 
@@ -194,6 +201,48 @@ public class CarAgent : Agent
         // Get raw actions from the agent
         float rawSteer = actions.ContinuousActions[0];
         float rawAccelAxis = actions.ContinuousActions[1];
+
+        // Decode: Positive is throttle, Negative is brake
+        float currentThrottle = rawAccelAxis > 0 ? rawAccelAxis : 0f;
+        float currentBrake    = rawAccelAxis < 0 ? -rawAccelAxis : 0f;
+
+        // 2. Calculate Deltas (How much did the action change?)
+        float throttleDelta = Mathf.Abs(currentThrottle - lastThrottle);
+        float brakeDelta    = Mathf.Abs(currentBrake - lastBrake);
+
+        // 3. Get Current Speed
+        float currentSpeed = rb.linearVelocity.magnitude; // or rb.velocity.magnitude in older Unity
+
+        // 4. Calculate Penalty (The Hybrid Logic)
+        float smoothnessPenalty = 0f;
+
+        // CONDITION A: Braking (ALWAYS penalize oscillation)
+        // We want firm, consistent braking, not pumping.
+        if (brakeDelta > 0.05f) 
+        {
+            smoothnessPenalty += brakeDelta * actionSmoothingPenalty;
+        }
+
+        // CONDITION B: Throttle (ONLY penalize when starting/slow)
+        // This prevents start-line stuttering but allows aggressive throttle at speed.
+        if (currentSpeed < lowSpeedThreshold)
+        {
+            if (throttleDelta > 0.05f)
+            {
+                smoothnessPenalty += throttleDelta * actionSmoothingPenalty;
+            }
+        }
+
+        // 5. Apply the Penalty
+        if (smoothnessPenalty > 0)
+        {
+            AddReward(-smoothnessPenalty);
+        }
+
+        // 6. Update History for next frame
+        lastThrottle = currentThrottle;
+        lastBrake = currentBrake;
+
         if (enableDebugLogging)
         {
             Debug.Log($"[CarAgent] Action #{actionCount} - Raw: [Steer={rawSteer:F3}]");
@@ -508,9 +557,9 @@ public class CarAgent : Agent
         {
             AddReward(0.5f); // Reward for hitting correct checkpoint
 
-            Debug.Log($"Lap: {lap} -- Checkpoint: {checkpointIndex}");
-            if (checkpointIndex == 0 && lap == 1)
-            {
+            // Debug.Log($"Lap: {lap} -- Checkpoint: {checkpointIndex}");
+            if (checkpointIndex == 0 && lap== 1)
+            {   
                 startTime=Time.time;
             }
             // Only give lap completion bonus when a NEW lap is started (checkpointIndex 0)
@@ -521,12 +570,16 @@ public class CarAgent : Agent
                 timeElapsed=Time.time-startTime;
                 Debug.Log($"[CarAgent] Lap completed in {timeElapsed:F2} seconds");
                 Unity.MLAgents.Academy.Instance.StatsRecorder.Add("Racing/LapTime", timeElapsed);
-                EndEpisode(); // End episode on lap completion
+                if (lap == 3) EndEpisode(); // End episode on lap completion
+            }
+            if (checkpointIndex == 0 && lap == 2)
+            {
+                startTime=Time.time;
             }
         }
         else
         {
-            Debug.Log("Wrong Checkpoint");
+            // Debug.Log("Wrong Checkpoint");
             AddReward(-1f); // Penalty for wrong checkpoint
             EndEpisode();
         }
@@ -601,6 +654,11 @@ public class CarAgent : Agent
             // Also set transform directly to ensure it's synced
             transform.position = spawnPosition;
             transform.rotation = spawnRotation;
+
+            // Reset smoothing history
+            lastThrottle = 0f;
+            lastBrake = 0f;
+            
         }
         else
         {

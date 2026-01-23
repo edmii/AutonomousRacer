@@ -77,15 +77,6 @@ IF minDistance < obstacleThreshold (0.2):
 - **Range**: 0 to -0.5 (at minDistance = 0)
 - **Example**: minDistance = 0.1 → penalty = 0.25 → -0.25 reward
 
-#### 8. Grounded Reward/Penalty
-```
-IF isGrounded:
-    reward += groundedReward (0.01)
-ELSE:
-    reward -= notGroundedPenalty (0.1)
-```
-- **Purpose**: Keep all wheels on ground
-- **Range**: +0.01 (grounded) or -0.1 (airborne)
 
 ### Episode Termination Rewards
 
