@@ -126,7 +126,7 @@ public class CheckpointManager : MonoBehaviour
                 s.lastHitTime = currentTime;
 
                 // 2. Log exactly WHY it failed (crucial for debugging Part 2)
-                Debug.LogWarning($"[CP] WRONG Hit! Agent hit Index {index}, but Manager expected {expected}. (Last correct was {s.last})");
+                Debug.LogWarning($"[CP] MANAGER ({this.GetInstanceID()}) WRONG Hit! Agent hit Index {index}, but Manager expected {expected}. (Last correct was {s.last})");
 
                 agent.OnCheckpointHit(false, index, s.lap);
             }
@@ -135,6 +135,19 @@ public class CheckpointManager : MonoBehaviour
         {
             Debug.LogError($"[CP] MANAGER ({this.GetInstanceID()}) EXCEPTION processing hit {index}: {e}");
         }
+    }
+
+    public List<Transform> GetNextCheckpoints(CarAgent agent, int count = 3)
+    {
+        List<Transform> nextCheckpoints = new List<Transform>();
+        if (!states.TryGetValue(agent, out var s) || Checkpoints.Count == 0) return nextCheckpoints;
+
+        for (int i = 1; i <= count; i++)
+        {
+            int nextIndex = (s.last + i) % Checkpoints.Count;
+            nextCheckpoints.Add(Checkpoints[nextIndex].transform);
+        }
+        return nextCheckpoints;
     }
 
     /// Reset checkpoint state for an agent (call from OnEpisodeBegin)

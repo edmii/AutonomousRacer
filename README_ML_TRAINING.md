@@ -6,13 +6,15 @@ This project uses Unity ML-Agents to train a neural network for autonomous racin
 ## Neural Network Architecture
 
 ### Observations (Input Space)
-The agent receives **~22 observations** per step:
+The agent receives **~28 observations** per step:
 - **13 raycast distances** (normalized 0-1): Obstacle detection in front and sides
 - **1 speed** (normalized 0-1): Current velocity magnitude
 - **1 yaw rate** (normalized -1 to 1): Angular velocity around Y-axis
 - **2 slip values** (normalized 0-1): Lateral and longitudinal wheel slip
 - **3 wheel states** (binary): Locked, spinning, on-track
 - **2 torque values** (normalized 0-1): Motor and brake torque
+- **1 checkpoint x value** (normalized -1 to 1 dividing by 50): for the next 3 checkpoints to reach
+- **1 checkpoint z value** (normalized 0-1 dividing by 200): for the next 3 checkpoints to reach
 
 ### Actions (Output Space)
 The agent outputs **2 continuous actions**:

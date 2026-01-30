@@ -24,9 +24,9 @@ public class CarAgent : Agent
 
     [Header("Reward Settings")]
     [Tooltip("Reward per m/s of forward speed")]
-    public float speedRewardMultiplier = 0.02f;
+    public float speedRewardMultiplier = 0.01f;
     [Tooltip("Reward for staying on track per step")]
-    public float onTrackReward = 0.01f;
+    public float onTrackReward = 0.15f;
     [Tooltip("Penalty for excessive lateral slip")]
     public float slipPenaltyMultiplier = 0.1f;
     [Tooltip("Reward for maintaining good traction (low slip)")]
@@ -41,7 +41,6 @@ public class CarAgent : Agent
     public float obstacleThreshold = 0.2f;
     [Tooltip("Reward for forward progress (velocity in forward direction)")]
     public float forwardProgressMultiplier = 0.02f;
-    [Tooltip("Reward for being grounded (all wheels on ground)")]
     
     [Header("Smoothness Controls")]
     [Tooltip("Penalty multiplier for jerky inputs.")]
@@ -183,12 +182,31 @@ public class CarAgent : Agent
         observationCount++;
         sensor.AddObservation(wheelTelemetry.normBrakeTorque); // [0..1]
         observationCount++;
+
+        // 1. Get the next 3 checkpoints from the manager
+        var nextCPs = checkpointManager.GetNextCheckpoints(this, 3);
+
+        foreach (var cp in nextCPs)
+        {
+            // 2. Convert world position to local position relative to the car
+            Vector3 localPos = transform.InverseTransformPoint(cp.position);
+            
+            // 3. Normalize the distance (e.g., assuming max look-ahead is 200m)
+            sensor.AddObservation(Mathf.Clamp(localPos.x / 50f, -1f, 1f));  // Lateral offset
+            // sensor.AddObservation(Mathf.Clamp(localPos.y / 10f, -1f, 1f));  // Vertical (for hills)
+            sensor.AddObservation(Mathf.Clamp(localPos.z / 200f, 0f, 1f));  // Longitudinal distance
+            
+            observationCount += 2;
+
+            // Debug.Log($"Checkpoint: {cp} at coordinates: x->{Mathf.Clamp(localPos.x / 50f, -1f, 1f)}, z->{Mathf.Clamp(localPos.z / 200f, 0f, 1f)}");
+            
+        }
         
         // Log observation count breakdown (only once per episode to avoid spam)
         if (enableDebugLogging && actionCount == 0)
         {
             int otherObs = observationCount - rayCount;
-            Debug.Log($"[CarAgent] Observation breakdown: Total={observationCount} (Rays={rayCount}, Speed=1, YawRate=1, Slips=2, WheelStates=3, Torques=2, Other={otherObs}). " +
+            Debug.Log($"[CarAgent] Observation breakdown: Total={observationCount} (Rays={rayCount}, Speed=1, YawRate=1, Slips=2, WheelStates=3, Torques=2, Checkpoints=6, Other={otherObs}). " +
                      $"Expected: {rayCount}+9={rayCount+9}. " +
                      $"Update Behavior Parameters > Vector Observation Space Size to {observationCount} to fix the warning.");
         }
@@ -207,8 +225,20 @@ public class CarAgent : Agent
         float currentBrake    = rawAccelAxis < 0 ? -rawAccelAxis : 0f;
 
         // 2. Calculate Deltas (How much did the action change?)
-        float throttleDelta = Mathf.Abs(currentThrottle - lastThrottle);
+        // float throttleDelta = Mathf.Abs(currentThrottle - lastThrottle);
         float brakeDelta    = Mathf.Abs(currentBrake - lastBrake);
+
+        float velocity = rb.linearVelocity.magnitude;
+        // Only reward smoothness if the car is actually moving and braking
+        if (velocity > 5f) 
+        {
+            // If the delta is low (smooth movement), give a small bonus
+            if (brakeDelta < 0.05f) 
+            {
+                // This encourages "bleeding" the brake slowly rather than slamming it
+                AddReward(0.05f); 
+            }
+        }
 
         // 3. Get Current Speed
         float currentSpeed = rb.linearVelocity.magnitude; // or rb.velocity.magnitude in older Unity
@@ -220,19 +250,18 @@ public class CarAgent : Agent
         // We want firm, consistent braking, not pumping.
         if (brakeDelta > 0.05f) 
         {
-            smoothnessPenalty += brakeDelta * actionSmoothingPenalty;
+            // smoothnessPenalty += brakeDelta * actionSmoothingPenalty;
+            smoothnessPenalty += brakeDelta * 1.5f;
         }
 
         // CONDITION B: Throttle (ONLY penalize when starting/slow)
         // This prevents start-line stuttering but allows aggressive throttle at speed.
-        if (currentSpeed < lowSpeedThreshold)
-        {
-            if (throttleDelta > 0.05f)
-            {
-                smoothnessPenalty += throttleDelta * actionSmoothingPenalty;
-            }
-        }
-
+        
+        // if (throttleDelta > 0.1f)
+        // {
+        //     smoothnessPenalty += throttleDelta * actionSmoothingPenalty;
+        // }
+        
         // 5. Apply the Penalty
         if (smoothnessPenalty > 0)
         {
@@ -445,7 +474,7 @@ public class CarAgent : Agent
         {
             AddReward(onTrackReward);
         } else {
-            AddReward(-0.35f); // Penalty for going off track
+            AddReward(-0.1f); // Penalty for going off track
             
         }
     
@@ -544,7 +573,7 @@ public class CarAgent : Agent
             
 
             // Force episode termination immediately
-            AddReward(-1f);
+            AddReward(-10f);
             // checkpointManager.ResetAgentState(this);
             EndEpisode();
         }
@@ -580,7 +609,7 @@ public class CarAgent : Agent
         else
         {
             // Debug.Log("Wrong Checkpoint");
-            AddReward(-1f); // Penalty for wrong checkpoint
+            AddReward(-0.1f); // Penalty for wrong checkpoint
             EndEpisode();
         }
     }
